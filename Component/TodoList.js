@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Platform, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Image } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Entypo from 'react-native-vector-icons/Entypo';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import notifee from '@notifee/react-native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+
 const TodoList = () => {
   const [task, setTask] = useState('');
   const [date, setDate] = useState(new Date());
@@ -16,22 +20,18 @@ const TodoList = () => {
     if (!task.trim()) {
       return;
     }
-  
+
     try {
-      const token = await AsyncStorage.getItem('token'); // Retrieve token from AsyncStorage
-      const response = await axios.post(
-        'http://10.0.2.2:3000/api/todos',
-        { task, date, time }, // Include task, date, and time in the request body
-        {
-          headers: {
-            Authorization: `Bearer ${token}`, // Include token in the request headers
-          },
-        }
-      );
-      console.log('Task added successfully:', response.data);
-  
-      // Update local state after successful submission
-      setTasks([...tasks, { task, date, time }]);
+      // Schedule notification for the task
+      const token  = await AsyncStorage.getItem('token');
+      const userId = await AsyncStorage.getItem('userId')
+     const response = await axios.post('http://10.0.2.2:3000/api/todos',{task,date,time,userId},
+     {
+     headers:{
+      Authorization:`Bearer ${token}`
+     }
+    });
+      setTasks([...tasks, newTask]);
       setTask('');
       setDate(new Date());
       setTime(new Date());
@@ -41,27 +41,15 @@ const TodoList = () => {
     }
   };
 
-//   const handleRemoveTask = index => {
-//     setTasks(prevTasks => prevTasks.filter((_, i) => i !== index));
-//   };
-const handleRemoveTask = async index => {
-    const newTasks = [...tasks];
-   const [deletedTask]= newTasks.splice(index, 1);
-    setTasks(newTasks);
-    const {task ,date,time} = deletedTask;
-    // You need to implement logic to delete tasks on the server
-    const token = await AsyncStorage.getItem('token');
-    const response = await axios.delete(
-      'http://10.0.2.2:3000/api/todos',
-      { task, date, time },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`, // Include token in the request headers
-        },
-      },
-    );
+  const handleRemoveTask = id => {
+    const taskToRemove = tasks.find(task => task.id === id);
+    if (taskToRemove) {
+      notifee.cancelNotification(taskToRemove.notificationId);
+    }
+    setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
   };
-  const renderTask = ({ item, index }) => (
+
+  const renderTask = ({ item }) => (
     <View style={styles.taskContainer}>
       <View style={styles.taskSquare}>
         <View style={styles.taskDateTime}>
@@ -70,7 +58,7 @@ const handleRemoveTask = async index => {
         </View>
         <View style={styles.taskContent}>
           <Text style={styles.taskText}>{item.task}</Text>
-          <TouchableOpacity onPress={() => handleRemoveTask(index)}>
+          <TouchableOpacity onPress={() => handleRemoveTask(item.id)}>
             <Text style={styles.deleteButton}>Delete</Text>
           </TouchableOpacity>
         </View>
@@ -125,7 +113,7 @@ const handleRemoveTask = async index => {
       <FlatList
         data={tasks}
         renderItem={renderTask}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={item => item.id.toString()}
         style={styles.list}
         ListEmptyComponent={<Image source={require('../assets/calendar.png')} style={styles.emptyImage} />}
       />
@@ -171,8 +159,7 @@ const styles = StyleSheet.create({
   },
   dateAndTimeButtons: {
     flexDirection: 'row',
-  gap:20,
-  padding:5,
+    justifyContent: 'space-between',
     marginBottom: 20,
   },
   button: {
@@ -227,7 +214,7 @@ const styles = StyleSheet.create({
   emptyImage: {
     width: '100%',
     height: 300,
-marginTop:'30%'
+    marginTop: '30%',
   },
 });
 

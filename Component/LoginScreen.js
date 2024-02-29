@@ -40,7 +40,8 @@ import { DialogBox,Loader } from './LoginMessage';
     
       try {
         setLoaderVisible(true);
-        const userData = {name, email, Password};
+        const deviceToken = await AsyncStorage.getItem('device_token')
+        const userData = {name, email, Password,deviceToken};
         const response = await axios.post(
           'http://10.0.2.2:3000/api/register',
           userData,
@@ -48,11 +49,13 @@ import { DialogBox,Loader } from './LoginMessage';
       
         if(response.status === 201)
         {
-          
+       
            // Extract token from response
-        const {token} = response.data;
-        // Store token locally (e.g., AsyncStorage)
-        await AsyncStorage.setItem('token', token);
+           const { token, userId } = response.data;
+
+                   // Save token and userId to AsyncStorage for future use
+                   await AsyncStorage.setItem('token', token);
+                   await AsyncStorage.setItem('userId', userId);
             setStatus("Register successfully")
         }
       
@@ -70,12 +73,16 @@ import { DialogBox,Loader } from './LoginMessage';
     const handleLogin = async () => {
       try {
         setLoaderVisible(true);
-        const userData = { email, Password };
+        const deviceToken = await AsyncStorage.getItem('device_token')
+        const userData = { email, Password,deviceToken };
         const response = await axios.post('http://10.0.2.2:3000/api/login', userData);
          if (response.status === 200) {
-          const token = response.data.token;
-        
-          await AsyncStorage.setItem('token', token);
+          const { token, userId } = response.data;
+
+                   // Save token and userId to AsyncStorage for future use
+                   await AsyncStorage.setItem('token', token);
+                   await AsyncStorage.setItem('userId', userId);;
+    
           setStatus("Login successful!");
     
          }
