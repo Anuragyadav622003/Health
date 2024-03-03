@@ -30,7 +30,7 @@ import { DialogBox,Loader } from './LoginMessage';
     //user register
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [Password, setPassword] = useState('');
+    const [password, setPassword] = useState('');
   //dialogbox and loader
     const [loaderVisible,setLoaderVisible] = useState(false);
   const [DialogBoxVissible,setDialogBoxVisible] = useState(false);
@@ -41,7 +41,7 @@ import { DialogBox,Loader } from './LoginMessage';
       try {
         setLoaderVisible(true);
         const deviceToken = await AsyncStorage.getItem('device_token')
-        const userData = {name, email, Password,deviceToken};
+        const userData = {name, email, password,deviceToken};
         const response = await axios.post(
           'http://10.0.2.2:3000/api/register',
           userData,
@@ -52,7 +52,7 @@ import { DialogBox,Loader } from './LoginMessage';
        
            // Extract token from response
            const { token, userId } = response.data;
-
+ 
                    // Save token and userId to AsyncStorage for future use
                    await AsyncStorage.setItem('token', token);
                    await AsyncStorage.setItem('userId', userId);
@@ -74,7 +74,7 @@ import { DialogBox,Loader } from './LoginMessage';
       try {
         setLoaderVisible(true);
         const deviceToken = await AsyncStorage.getItem('device_token')
-        const userData = { email, Password,deviceToken };
+        const userData = { email, password,deviceToken };
         const response = await axios.post('http://10.0.2.2:3000/api/login', userData);
          if (response.status === 200) {
           const { token, userId } = response.data;
@@ -188,7 +188,7 @@ import { DialogBox,Loader } from './LoginMessage';
                     placeholder="Password"
                     placeholderTextColor="gray"
                     secureTextEntry={true}
-                    value={Password}
+                    value={password}
                     onChangeText={text => setPassword(text)}
                   />
                 </View>
@@ -315,7 +315,7 @@ import { DialogBox,Loader } from './LoginMessage';
                     placeholder="Password"
                     placeholderTextColor="gray"
                     secureTextEntry={true}
-                    value={Password}
+                    value={password}
                     onChangeText={text => setPassword(text)}
                   />
                 </View>

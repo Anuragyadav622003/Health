@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Image } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Entypo from 'react-native-vector-icons/Entypo';
@@ -13,8 +13,35 @@ const TodoList = () => {
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(new Date());
   const [tasks, setTasks] = useState([]);
+  const [dueTime,setDueTime] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  useEffect(() => {
+     fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+        const token = await AsyncStorage.getItem('token');
+        const userId = await AsyncStorage.getItem('userId');
+
+        const response = await axios.get('http://10.0.2.2:3000/api/todos', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            params: {
+                userId: userId
+            }
+        });
+
+      
+        setTasks(response.data); // Assuming setTasks is a state setter function
+    } catch (error) {
+        console.error('Error fetching tasks:', error);
+    }
+};
+
 
   const handleAddTask = async () => {
     if (!task.trim()) {
@@ -22,63 +49,84 @@ const TodoList = () => {
     }
 
     try {
-      // Schedule notification for the task
+    
       const token  = await AsyncStorage.getItem('token');
       const userId = await AsyncStorage.getItem('userId')
-     const response = await axios.post('http://10.0.2.2:3000/api/todos',{task,date,time,userId},
+      const newTask = { task, date, dueTime,userId };
+     const response = await axios.post('http://10.0.2.2:3000/api/todos',  newTask,
      {
      headers:{
       Authorization:`Bearer ${token}`
      }
     });
-      setTasks([...tasks, newTask]);
-      setTask('');
-      setDate(new Date());
-      setTime(new Date());
+  
+
+    setTask('');
+    setDate(new Date());
+    setTime(new Date());
+    fetchData()
+ 
     } catch (error) {
       console.error('Error adding task:', error);
       // Handle error
     }
   };
 
-  const handleRemoveTask = id => {
-    const taskToRemove = tasks.find(task => task.id === id);
-    if (taskToRemove) {
-      notifee.cancelNotification(taskToRemove.notificationId);
+  const handleRemoveTask = async (id) => {
+    try {
+      // Optimistically remove the task from the UI
+      setTasks(prevTasks => prevTasks.filter(task => task._id !== id));
+         const token = await AsyncStorage.getItem('token');
+         console.log(token)
+      // Send request to delete the task from the backend
+      await axios.delete('http://10.0.2.2:3000/api/todos', {
+        data: { id }, // Send the task ID in the request body
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error('Error removing task:', error);
+      // If an error occurs, revert the task removal in the UI
+      setTasks(prevTasks => [...prevTasks, tasks.find(task => task._id === id)]);
     }
-    setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
   };
+  
 
-  const renderTask = ({ item }) => (
-    <View style={styles.taskContainer}>
-      <View style={styles.taskSquare}>
-        <View style={styles.taskDateTime}>
-          <Text style={styles.taskDate}>{item.date.toLocaleDateString()}</Text>
-          <Text style={styles.taskTime}>{item.time.toLocaleTimeString()}</Text>
-        </View>
-        <View style={styles.taskContent}>
-          <Text style={styles.taskText}>{item.task}</Text>
-          <TouchableOpacity onPress={() => handleRemoveTask(item.id)}>
-            <Text style={styles.deleteButton}>Delete</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
 
   const handleDateChange = (_, selectedDate) => {
     setShowDatePicker(false);
     setDate(selectedDate || date);
+    console.log(date)
   };
 
   const handleTimeChange = (_, selectedTime) => {
     setShowTimePicker(false);
-    setTime(selectedTime || time);
+    if (selectedTime !== undefined && selectedTime !== null) {
+      const formattedTime = selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+      setDueTime(formattedTime);
+      setTime(selectedTime);
+    }
   };
+
+  const renderTaskItem = ({ item }) => (
+    <View style={styles.card}>
+      <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between'}}>
+        <Text style={{fontSize:17}}>{item.dueTime}</Text>
+        <Text style={{fontSize:17}}>{item.dueDate}</Text>
+      </View>
+      <View>
+        <Text style={{fontSize:16}}>{item.task}</Text>
+        <Text style={{ color: 'red',fontSize:17 }}  onPress={() => handleRemoveTask(item._id)}>Delete</Text>
+      </View>
+    </View>
+  );
+
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>To Do List</Text>
+      <Text style={styles.title}>To Do List </Text>
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -110,13 +158,12 @@ const TodoList = () => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
+     <FlatList
         data={tasks}
-        renderItem={renderTask}
-        keyExtractor={item => item.id.toString()}
+        renderItem={renderTaskItem}
         style={styles.list}
         ListEmptyComponent={<Image source={require('../assets/calendar.png')} style={styles.emptyImage} />}
-      />
+      /> 
     </View>
   );
 };
@@ -159,8 +206,9 @@ const styles = StyleSheet.create({
   },
   dateAndTimeButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap:10,
     marginBottom: 20,
+    marginTop:10
   },
   button: {
     flexDirection: 'row',
@@ -171,50 +219,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderColor: '#ccc',
   },
-  taskContainer: {
-    marginBottom: 20,
-  },
-  taskSquare: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  taskDateTime: {
-    marginRight: 10,
-  },
-  taskDate: {
-    fontSize: 16,
-    color: '#555',
-    marginBottom: 5,
-  },
-  taskTime: {
-    fontSize: 16,
-    color: '#555',
-  },
-  taskContent: {
-    flex: 1,
-  },
-  taskText: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    color: 'red',
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginLeft: 10,
-  },
+  
   emptyImage: {
     width: '100%',
     height: 300,
     marginTop: '30%',
+  },
+  card: {
+       flex:1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    elevation: 3,
+    marginHorizontal: 10,
+    marginVertical: 6,
+    padding: 10,
   },
 });
 

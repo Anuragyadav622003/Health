@@ -62,9 +62,9 @@ const App = () => {
    return (
       <SafeAreaProvider>
          <StackNav/>
-         {/* <TodoList/>
-         <Shedule/>
-         <Notify/> */}
+        {/* <TodoList/> */}
+         {/*  <Shedule/>
+         <Notify/> */} 
       </SafeAreaProvider>
    );
 };
